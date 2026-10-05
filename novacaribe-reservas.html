@@ -1,0 +1,964 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>NovaCaribe Reservas</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ==========================================================================
+   ESTILOS
+   Los colores viven en "tokens" (variables CSS). Así el modo claro y el
+   oscuro solo cambian los valores, no el resto del código.
+   ========================================================================== */
+:root {
+  --bg: #EEF3F3;
+  --surface: #FFFFFF;
+  --ink: #0E2A3B;
+  --muted: #4F6B78;
+  --line: #CFDDE0;
+  --brand: #0F6E7F;
+  --brand-ink: #FFFFFF;
+  --sun: #F2B632;
+  --focus: #1B5FD1;
+  --ok-bg: #DDF2E5;   --ok: #14633A;
+  --warn-bg: #FCEFC9; --warn: #7A4F00;
+  --bad-bg: #F9DEDA;  --bad: #A52E26;
+  --barra-bg: #0E2A3B; --barra-ink: #EAF4F6;
+  --font-head: 'Bricolage Grotesque', 'Trebuchet MS', system-ui, sans-serif;
+  --font-body: 'Public Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0A1C27; --surface: #10303F; --ink: #E6F0F2; --muted: #93B2BD;
+    --line: #1F4556; --brand: #4FC1D3; --brand-ink: #06222B; --focus: #F2B632;
+    --ok-bg: #12382A;   --ok: #6FD9A0;
+    --warn-bg: #3A2D0B; --warn: #F2C766;
+    --bad-bg: #43191A;  --bad: #FF9A91;
+    --barra-bg: #061219; --barra-ink: #E6F0F2;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0A1C27; --surface: #10303F; --ink: #E6F0F2; --muted: #93B2BD;
+  --line: #1F4556; --brand: #4FC1D3; --brand-ink: #06222B; --focus: #F2B632;
+  --ok-bg: #12382A;   --ok: #6FD9A0;
+  --warn-bg: #3A2D0B; --warn: #F2C766;
+  --bad-bg: #43191A;  --bad: #FF9A91;
+  --barra-bg: #061219; --barra-ink: #E6F0F2;
+}
+html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+*, *::before, *::after { box-sizing: inherit; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 16px/1.5 var(--font-body);
+}
+h1, h2 { font-family: var(--font-head); line-height: 1.15; margin: 0 0 12px; }
+h1 { font-size: 28px; }
+h2 { font-size: 20px; }
+p { margin: 0 0 12px; }
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+/* ---- Botones ---- */
+.btn, .nav-item {
+  font: inherit; cursor: pointer;
+}
+.btn {
+  min-height: 44px; padding: 8px 18px; border-radius: 8px;
+  border: 1px solid var(--brand); background: var(--brand); color: var(--brand-ink);
+  font-weight: 600;
+}
+.btn[disabled] { opacity: .5; cursor: not-allowed; }
+.btn.sec { background: transparent; color: var(--ink); border-color: var(--line); }
+.btn.peligro { background: transparent; color: var(--bad); border-color: var(--bad); }
+.btn.chico { min-height: 36px; padding: 4px 12px; font-size: 14px; }
+
+/* ---- Formularios ---- */
+.formulario { display: grid; gap: 18px; max-width: 760px; }
+.campos { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
+label { display: grid; gap: 6px; font-weight: 500; }
+input, select, textarea {
+  font: inherit; width: 100%; min-height: 44px; padding: 8px 12px;
+  border: 1px solid var(--line); border-radius: 8px;
+  background: var(--surface); color: var(--ink);
+}
+textarea { resize: vertical; }
+.errores {
+  margin: 0; padding: 12px 16px 12px 32px; border-radius: 8px;
+  background: var(--bad-bg); color: var(--bad);
+}
+.aviso { margin: 0 0 16px; padding: 10px 14px; border-radius: 8px; font-weight: 500; }
+.aviso.ok { background: var(--ok-bg); color: var(--ok); }
+.aviso.error { background: var(--bad-bg); color: var(--bad); }
+.vacio { color: var(--muted); padding: 24px 0; }
+
+/* ---- Línea de tiempo del día (el elemento principal de la interfaz) ---- */
+.linea { margin: 8px 0 4px; }
+.regla { position: relative; height: 22px; font-size: 12px; color: var(--muted); }
+.regla span { position: absolute; top: 0; white-space: nowrap; }
+.pista {
+  position: relative; height: 48px; border: 1px solid var(--line); border-radius: 8px;
+  background-color: var(--surface);
+  background-image: linear-gradient(to right, var(--line) 1px, transparent 1px);
+  background-size: 6.25% 100%;   /* 16 horas de servicio = 16 columnas */
+  overflow: hidden;
+}
+.bloque {
+  position: absolute; top: 6px; bottom: 6px; padding: 0 6px; border-radius: 5px;
+  font-size: 12px; line-height: 34px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+}
+.bloque.aprobada { background: var(--brand); color: var(--brand-ink); }
+.bloque.pendiente { background: var(--warn-bg); color: var(--warn); border: 1px dashed var(--warn); line-height: 32px; }
+.bloque.borrador { background: transparent; color: var(--ink); border: 2px solid var(--focus); line-height: 30px; }
+.bloque.borrador.cruce { background: var(--bad-bg); color: var(--bad); border-color: var(--bad); }
+.leyenda { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 8px 0 0; padding: 0; list-style: none; font-size: 14px; color: var(--muted); }
+.leyenda i { display: inline-block; width: 14px; height: 14px; border-radius: 3px; vertical-align: -2px; margin-right: 6px; }
+.leyenda .l-aprobada { background: var(--brand); }
+.leyenda .l-pendiente { background: var(--warn-bg); border: 1px dashed var(--warn); }
+.leyenda .l-borrador { border: 2px solid var(--focus); }
+.pista-texto { margin: 10px 0 0; font-weight: 500; }
+.ocupado { margin: 8px 0 0; font-size: 14px; color: var(--muted); }
+
+/* ---- Insignias de estado ---- */
+.badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 13px; font-weight: 600; }
+.badge.pendiente { background: var(--warn-bg); color: var(--warn); }
+.badge.aprobada { background: var(--ok-bg); color: var(--ok); }
+.badge.rechazada { background: var(--bad-bg); color: var(--bad); }
+.badge.cancelada { background: var(--line); color: var(--muted); }
+
+/* ---- Listas de reservas ---- */
+.lista { list-style: none; margin: 0; padding: 0; }
+.fila { display: grid; gap: 6px 20px; padding: 16px 0; border-bottom: 1px solid var(--line); grid-template-columns: 1fr auto; align-items: start; }
+.fila .titulo { font-weight: 600; }
+.fila .detalle { color: var(--muted); font-size: 15px; margin: 0; }
+.fila .acciones { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: flex-end; }
+.fila form { display: flex; gap: 8px; flex-wrap: wrap; }
+.fila form input { min-height: 36px; width: 220px; }
+@media (max-width: 760px) {
+  .fila { grid-template-columns: 1fr; }
+  .fila .acciones { justify-content: flex-start; }
+  .fila form input { width: 100%; }
+}
+
+/* ---- Tabla ---- */
+.tabla-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; min-width: 560px; }
+th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+th { color: var(--muted); font-weight: 600; font-size: 14px; }
+tr:last-child td { border-bottom: 0; }
+.filtro { max-width: 260px; margin-bottom: 16px; }
+
+/* ---- Reportes ---- */
+.resumen { margin: 0 0 28px; max-width: 480px; }
+.resumen div { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.resumen dt { color: var(--muted); }
+.resumen dd { margin: 0; font-weight: 600; }
+.barras { list-style: none; margin: 0; padding: 0; max-width: 640px; display: grid; gap: 12px; }
+.barra-fila { display: grid; grid-template-columns: 170px 1fr 56px; gap: 12px; align-items: center; }
+.barra-pista { display: block; height: 14px; border-radius: 7px; background: var(--line); overflow: hidden; }
+.barra-valor { display: block; height: 100%; background: var(--brand); border-radius: 7px; }
+.barra-num { text-align: right; font-weight: 600; }
+@media (max-width: 560px) { .barra-fila { grid-template-columns: 1fr 56px; } .barra-pista { grid-column: 1 / -1; order: 3; } }
+
+/* ---- Estructura general de la aplicación ---- */
+.app {
+  display: grid;
+  grid-template-columns: 230px minmax(0, 1fr);
+  grid-template-areas: "barra barra" "lateral contenido";
+}
+.barra {
+  grid-area: barra; display: flex; justify-content: space-between; align-items: center; gap: 12px;
+  padding: 12px 24px; background: var(--barra-bg); color: var(--barra-ink);
+}
+.barra-marca { font-family: var(--font-head); font-weight: 700; font-size: 18px; display: flex; align-items: center; gap: 10px; }
+.punto { width: 12px; height: 12px; border-radius: 50%; background: var(--sun); }
+.barra-usuario { display: flex; align-items: center; gap: 14px; text-align: right; }
+.barra-usuario .nombre { display: block; font-weight: 600; }
+.barra-usuario .rol { display: block; font-size: 13px; opacity: .8; }
+.barra .btn.sec { color: var(--barra-ink); border-color: rgba(255,255,255,.35); }
+.lateral { grid-area: lateral; padding: 20px 12px; border-right: 1px solid var(--line); }
+.lateral ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.nav-item {
+  display: flex; justify-content: space-between; align-items: center; width: 100%;
+  min-height: 44px; padding: 8px 12px; border: 0; border-radius: 8px;
+  background: transparent; color: var(--ink); text-align: left;
+}
+.nav-item.activo { background: var(--surface); font-weight: 600; box-shadow: inset 3px 0 0 var(--brand); }
+.contador { min-width: 22px; padding: 0 6px; border-radius: 11px; background: var(--sun); color: #3B2A00; font-size: 13px; font-weight: 700; text-align: center; }
+.contenido { grid-area: contenido; padding: 28px 32px 48px; }
+@media (max-width: 760px) {
+  .app { grid-template-columns: minmax(0, 1fr); grid-template-areas: "barra" "lateral" "contenido"; }
+  .barra { padding: 10px 16px; }
+  .barra-usuario .rol { display: none; }
+  .lateral { padding: 8px 12px; border-right: 0; border-bottom: 1px solid var(--line); }
+  .lateral ul { display: flex; overflow-x: auto; }
+  .nav-item { white-space: nowrap; gap: 8px; }
+  .contenido { padding: 20px 16px 40px; }
+}
+
+/* ---- Pantalla de entrada ---- */
+.login {
+  display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 48px;
+  max-width: 1080px; margin: 0 auto; padding: 56px 24px;
+}
+.login-intro h1 { font-size: clamp(30px, 5vw, 46px); max-width: 20ch; }
+.marca { font-weight: 600; color: var(--brand); margin-bottom: 10px; }
+.lead { font-size: 18px; color: var(--muted); max-width: 52ch; }
+.muestra { margin-top: 28px; padding: 18px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+.muestra-titulo { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 4px; }
+.muestra-titulo span { color: var(--muted); }
+.nota { color: var(--muted); }
+@media (max-width: 860px) { .login { grid-template-columns: minmax(0, 1fr); gap: 32px; padding: 32px 16px; } }
+</style>
+<!-- Librería oficial de Supabase (versión 2). Debe cargarse antes del script de la app. -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+/* ==========================================================================
+   SISTEMA DE RESERVA DE AULAS, LABORATORIOS Y EQUIPOS  (versión con Supabase)
+   --------------------------------------------------------------------------
+   Esta aplicación está organizada en capas, igual que un sistema real:
+
+     1. Configuración  -> claves de Supabase, constantes y definición de roles.
+     2. Datos          -> comunicación con Supabase (login y tablas).
+     3. Reglas de negocio -> validaciones y detección de cruces de horario.
+     4. Acciones       -> lo que cada rol puede hacer (aprobar, reservar...).
+     5. Interfaz       -> funciones que dibujan HTML según el estado.
+
+   SEGURIDAD: las comprobaciones de rol que hay en este archivo solo sirven
+   para mostrar u ocultar botones. La seguridad real está en la base de datos:
+   las políticas RLS y la restricción "sin_cruces" (ver supabase-setup.sql)
+   se aplican en el servidor, aunque alguien manipule el navegador.
+   ========================================================================== */
+(function () {
+  'use strict';
+
+  /* ======================================================================
+     1. CONFIGURACIÓN
+     Pega aquí los dos valores de Supabase > Project Settings > API.
+     La clave "anon" es pública por diseño: lo que protege tus datos son
+     las políticas RLS. NUNCA pegues aquí la clave "service_role".
+     ====================================================================== */
+  const SUPABASE_URL = 'https://gzfgjqwwjofnionpwdlg.supabase.co';
+  const SUPABASE_ANON_KEY = 'sb_publishable_s1NDbn9j4425PxomcrbuRQ_eIzRbjgI';
+
+  const HORA_APERTURA = 6;   // primera hora reservable: 06:00
+  const HORA_CIERRE = 22;    // fin de la última franja: 22:00
+
+  // Cada rol tiene una lista de vistas (pantallas) que puede abrir.
+  // Esto es el "control de acceso basado en roles" (RBAC).
+  const ROLES = {
+    solicitante: { nombre: 'Estudiante o docente', vistas: ['reservar', 'mis-reservas'] },
+    coordinador: { nombre: 'Coordinador académico', vistas: ['solicitudes', 'todas', 'reportes'] },
+    admin:       { nombre: 'Administrador', vistas: ['recursos', 'todas', 'reportes'] }
+  };
+  const VISTAS = {
+    'reservar':     { nav: 'Reservar',          titulo: 'Reservar un recurso' },
+    'mis-reservas': { nav: 'Mis reservas',      titulo: 'Mis reservas' },
+    'solicitudes':  { nav: 'Solicitudes',       titulo: 'Solicitudes por revisar' },
+    'todas':        { nav: 'Todas las reservas', titulo: 'Todas las reservas' },
+    'reportes':     { nav: 'Reportes',          titulo: 'Reportes de uso' },
+    'recursos':     { nav: 'Recursos',          titulo: 'Recursos' }
+  };
+  const TIPOS = { aula: 'Aulas', laboratorio: 'Laboratorios', equipo: 'Equipos' };
+  const ESTADOS = { pendiente: 'Pendiente', aprobada: 'Aprobada', rechazada: 'Rechazada', cancelada: 'Cancelada' };
+
+  // Código de error de Postgres cuando salta la restricción "sin_cruces".
+  const ERROR_CRUCE = '23P01';
+  // Código de error de Postgres cuando se repite un valor único (nombre de recurso).
+  const ERROR_DUPLICADO = '23505';
+
+  // Solo creamos el cliente si hay claves reales y la librería cargó bien.
+  const configurado = !/TU-PROYECTO|TU_CLAVE/.test(SUPABASE_URL + SUPABASE_ANON_KEY);
+  const libreriaLista = !!(window.supabase && window.supabase.createClient);
+  const sb = (configurado && libreriaLista)
+    ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+    : null;
+
+  /* ======================================================================
+     2. UTILIDADES Y CAPA DE DATOS
+     ====================================================================== */
+  const $ = (selector) => document.querySelector(selector);
+
+  // Escapa texto antes de ponerlo en el HTML. Evita que alguien escriba
+  // <script> en el motivo de una reserva (ataque XSS).
+  function esc(texto) {
+    return String(texto).replace(/[&<>"']/g, (c) =>
+      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  // Las horas se guardan como texto "HH:MM". Para compararlas las pasamos a minutos.
+  function aMin(hhmm) { const [h, m] = hhmm.split(':').map(Number); return h * 60 + m; }
+  function aHHMM(min) {
+    return String(Math.floor(min / 60)).padStart(2, '0') + ':' + String(min % 60).padStart(2, '0');
+  }
+  function franjas(desdeMin, hastaMin) { // lista de horas cada 30 minutos
+    const lista = [];
+    for (let m = desdeMin; m <= hastaMin; m += 30) lista.push(aHHMM(m));
+    return lista;
+  }
+
+  // Las fechas se guardan como "AAAA-MM-DD". Ese formato se puede comparar como texto.
+  function fechaISO(fecha) {
+    return fecha.getFullYear() + '-' + String(fecha.getMonth() + 1).padStart(2, '0') + '-' + String(fecha.getDate()).padStart(2, '0');
+  }
+  function hoyISO() { return fechaISO(new Date()); }
+  function fechaLegible(iso) {
+    return new Date(iso + 'T00:00:00').toLocaleDateString('es-CO', { weekday: 'short', day: 'numeric', month: 'short' });
+  }
+
+  // Copia en memoria de lo que hay en Supabase. Se vuelve a llenar después de cada cambio.
+  let datos = { usuarios: [], recursos: [], reservas: [] };
+
+  // Lee las tres tablas. Devuelve true si todo salió bien.
+  // Nota: Supabase devuelve como máximo 1000 filas por consulta. Si algún día hay
+  // más reservas, conviene filtrar por fecha o paginar.
+  async function cargarTodo() {
+    const [u, r, x] = await Promise.all([
+      sb.from('perfiles').select('id, nombre, detalle, rol'),
+      sb.from('recursos').select('id, nombre, tipo, capacidad, activo').order('nombre'),
+      sb.from('reservas').select('*').order('fecha', { ascending: false }).limit(1000)
+    ]);
+    if (u.error || r.error || x.error) return false;
+    datos.usuarios = u.data;
+    datos.recursos = r.data;
+    // La base usa snake_case y las horas llegan como "08:00:00".
+    // Aquí las convertimos al formato que usa el resto de la app.
+    datos.reservas = x.data.map((d) => ({
+      id: d.id,
+      usuarioId: d.usuario_id,
+      recursoId: d.recurso_id,
+      fecha: d.fecha,
+      inicio: d.inicio.slice(0, 5),
+      fin: d.fin.slice(0, 5),
+      motivo: d.motivo,
+      estado: d.estado,
+      motivoRechazo: d.motivo_rechazo || ''
+    }));
+    return true;
+  }
+
+  const nombreUsuario = (id) => (datos.usuarios.find((u) => u.id === id) || { nombre: 'Usuario desconocido' }).nombre;
+  const nombreRecurso = (id) => (datos.recursos.find((r) => r.id === id) || { nombre: 'Recurso eliminado' }).nombre;
+  const textoCapacidad = (r) => r.capacidad + (r.tipo === 'equipo' ? (r.capacidad === 1 ? ' unidad' : ' unidades') : ' personas');
+  const porFecha = (a, b) => (a.fecha + a.inicio).localeCompare(b.fecha + b.inicio);
+
+  /* ======================================================================
+     3. REGLAS DE NEGOCIO
+     Estas validaciones dan respuesta rápida en pantalla. La base de datos
+     vuelve a verificar los cruces, por si dos personas reservan a la vez.
+     ====================================================================== */
+
+  // Dos reservas se cruzan si son del mismo recurso, el mismo día, y sus
+  // horarios se solapan: A empieza antes de que B termine Y B empieza antes de que A termine.
+  // Solo bloquean las reservas pendientes y aprobadas (una rechazada o cancelada libera el horario).
+  function hayCruce(recursoId, fecha, inicio, fin, ignorarId) {
+    return datos.reservas.find((r) =>
+      r.id !== ignorarId &&
+      r.recursoId === recursoId &&
+      r.fecha === fecha &&
+      (r.estado === 'pendiente' || r.estado === 'aprobada') &&
+      aMin(r.inicio) < aMin(fin) &&
+      aMin(inicio) < aMin(r.fin)
+    );
+  }
+
+  // Devuelve una lista de errores (vacía si la solicitud es válida).
+  function validarSolicitud(s) {
+    const errores = [];
+    const recurso = datos.recursos.find((r) => r.id === s.recursoId);
+    if (!recurso || !recurso.activo) errores.push('Elige un recurso disponible.');
+    if (!s.fecha) errores.push('Elige una fecha.');
+    else if (s.fecha < hoyISO()) errores.push('La fecha ya pasó. Elige hoy o un día posterior.');
+    if (aMin(s.fin) <= aMin(s.inicio)) errores.push('La hora de fin debe ser posterior a la hora de inicio.');
+    if (s.fecha === hoyISO()) {
+      const ahora = new Date();
+      if (aMin(s.inicio) < ahora.getHours() * 60 + ahora.getMinutes()) errores.push('La hora de inicio ya pasó.');
+    }
+    if (!s.motivo || s.motivo.trim().length < 5) errores.push('Describe el motivo con al menos 5 caracteres.');
+    if (!errores.length) {
+      const cruce = hayCruce(s.recursoId, s.fecha, s.inicio, s.fin);
+      if (cruce) errores.push('Ese horario se cruza con otra reserva (' + cruce.inicio + ' a ' + cruce.fin + '). Elige otra franja.');
+    }
+    return errores;
+  }
+
+  // Mensaje en vivo mientras la persona elige el horario.
+  function textoDisponibilidad(b) {
+    if (!b.recursoId || !b.fecha) return '';
+    if (aMin(b.fin) <= aMin(b.inicio)) return 'La hora de fin debe ser posterior a la hora de inicio.';
+    const cruce = hayCruce(b.recursoId, b.fecha, b.inicio, b.fin);
+    return cruce
+      ? 'Ocupado de ' + cruce.inicio + ' a ' + cruce.fin + '. Elige otra franja.'
+      : 'Franja libre. Puedes enviar la solicitud.';
+  }
+
+  /* ======================================================================
+     4. ESTADO DE LA SESIÓN Y ACCIONES
+     ====================================================================== */
+  const estado = {
+    iniciando: !!sb,          // true mientras se comprueba si ya había una sesión abierta
+    usuario: null,            // perfil de quien inició sesión
+    vista: null,              // qué pantalla se muestra
+    borrador: null,           // lo que la persona va escribiendo en el formulario de reserva
+    borradorRecurso: { nombre: '', tipo: 'aula', capacidad: '' },
+    correoLogin: '',
+    errores: [],
+    aviso: null,
+    filtro: 'todas'
+  };
+  let temporizadorAviso = null;
+  let trabajando = false;
+
+  // Ejecuta una acción que habla con Supabase. Ignora clics repetidos mientras
+  // la anterior sigue en curso (evita enviar dos veces la misma reserva).
+  async function ejecutar(accion) {
+    if (trabajando) return;
+    trabajando = true;
+    try {
+      await accion();
+    } catch (e) {
+      const msg = 'Ocurrió un error inesperado. Revisa tu conexión e inténtalo de nuevo.';
+      if (estado.usuario) avisar(msg, 'error'); else estado.errores = [msg];
+      render();
+    } finally {
+      trabajando = false;
+    }
+  }
+
+  function nuevoBorrador() {
+    const primero = datos.recursos.find((r) => r.activo);
+    return { recursoId: primero ? primero.id : '', fecha: hoyISO(), inicio: '08:00', fin: '10:00', motivo: '' };
+  }
+
+  // Estas dos funciones solo controlan lo que se muestra. La seguridad real la
+  // aplica Supabase con las políticas RLS.
+  function permitido() {
+    return !!estado.usuario && Array.prototype.slice.call(arguments).includes(estado.usuario.rol);
+  }
+  function puede(vista) { return !!estado.usuario && ROLES[estado.usuario.rol].vistas.includes(vista); }
+
+  function avisar(texto, tipo) {
+    estado.aviso = { texto: texto, tipo: tipo || 'ok' };
+    clearTimeout(temporizadorAviso);
+    temporizadorAviso = setTimeout(() => {
+      estado.aviso = null;
+      const el = $('#aviso');
+      if (el) el.innerHTML = '';
+    }, 6000);
+  }
+
+  // Una actualización en Supabase puede "salir bien" pero no cambiar nada si las
+  // políticas RLS la bloquean. Por eso pedimos las filas afectadas y las contamos.
+  const sinCambios = (res) => !!res.error || !res.data || res.data.length === 0;
+
+  function limpiarSesion() {
+    estado.usuario = null; estado.vista = null; estado.borrador = null;
+    estado.aviso = null; estado.errores = []; estado.filtro = 'todas';
+    datos = { usuarios: [], recursos: [], reservas: [] };
+  }
+
+  async function iniciar() {
+    try {
+      const { data } = await sb.auth.getSession();
+      if (data && data.session) { await abrirSesion(data.session.user.id); return; }
+    } finally {
+      estado.iniciando = false;
+    }
+    render();
+  }
+
+  // Carga los datos y entra a la aplicación con el perfil del usuario.
+  async function abrirSesion(userId) {
+    const ok = await cargarTodo();
+    const perfil = datos.usuarios.find((p) => p.id === userId);
+    estado.iniciando = false;
+    if (!ok || !perfil || !ROLES[perfil.rol]) {
+      await sb.auth.signOut();
+      limpiarSesion();
+      estado.errores = ['No se pudo cargar tu perfil. Inténtalo de nuevo o contacta al administrador.'];
+      render();
+      return;
+    }
+    estado.usuario = perfil;
+    estado.vista = ROLES[perfil.rol].vistas[0];
+    estado.borrador = nuevoBorrador();
+    estado.errores = [];
+    estado.correoLogin = '';
+    render();
+  }
+
+  async function iniciarSesion(correo, clave) {
+    if (!sb) return;
+    correo = String(correo || '').trim();
+    clave = String(clave || '');
+    estado.correoLogin = correo;
+    if (!correo || !clave) { estado.errores = ['Escribe tu correo y tu contraseña.']; render(); return; }
+    const { data, error } = await sb.auth.signInWithPassword({ email: correo, password: clave });
+    if (error || !data || !data.user) {
+      estado.errores = [error && /not confirmed/i.test(error.message)
+        ? 'Debes confirmar tu correo antes de entrar.'
+        : 'Correo o contraseña incorrectos.'];
+      render();
+      return;
+    }
+    await abrirSesion(data.user.id);
+  }
+
+  async function salir() {
+    if (sb) await sb.auth.signOut();
+    limpiarSesion();
+    render();
+  }
+
+  async function irA(vista) {
+    if (!puede(vista)) return;
+    await cargarTodo();   // así cada pantalla muestra los datos más recientes
+    estado.vista = vista; estado.errores = []; render();
+  }
+
+  async function enviarReserva() {
+    if (!permitido('solicitante')) return;
+    const b = estado.borrador;
+    const errores = validarSolicitud(b);
+    if (errores.length) { estado.errores = errores; render(); return; }
+
+    const { error } = await sb.from('reservas').insert({
+      usuario_id: estado.usuario.id,
+      recurso_id: b.recursoId,
+      fecha: b.fecha,
+      inicio: b.inicio,
+      fin: b.fin,
+      motivo: b.motivo.trim()
+    });
+    if (error) {
+      estado.errores = [error.code === ERROR_CRUCE
+        ? 'Ese horario acaba de ser ocupado por otra reserva. Elige otra franja.'
+        : 'No se pudo enviar la solicitud. Inténtalo de nuevo.'];
+      await cargarTodo();   // refresca la línea de tiempo con lo que hay ahora
+      render();
+      return;
+    }
+    await cargarTodo();
+    estado.borrador = nuevoBorrador();
+    estado.errores = [];
+    estado.vista = 'mis-reservas';
+    avisar('Solicitud enviada. El coordinador la revisará.');
+    render();
+  }
+
+  async function cancelar(id) {
+    if (!permitido('solicitante')) return;
+    const res = await sb.from('reservas').update({ estado: 'cancelada' })
+      .eq('id', id)
+      .eq('usuario_id', estado.usuario.id)
+      .in('estado', ['pendiente', 'aprobada'])
+      .select('id');
+    if (sinCambios(res)) avisar('No se pudo cancelar la reserva.', 'error');
+    else avisar('Reserva cancelada. El horario quedó libre.');
+    await cargarTodo(); render();
+  }
+
+  async function aprobar(id) {
+    if (!permitido('coordinador')) return;
+    const r = datos.reservas.find((x) => x.id === id);
+    if (!r || r.estado !== 'pendiente') return;
+    if (hayCruce(r.recursoId, r.fecha, r.inicio, r.fin, r.id)) {
+      avisar('No se puede aprobar: el horario se cruza con otra reserva.', 'error'); render(); return;
+    }
+    const res = await sb.from('reservas').update({ estado: 'aprobada' })
+      .eq('id', id).eq('estado', 'pendiente').select('id');
+    if (sinCambios(res)) avisar('No se pudo aprobar: la solicitud ya no está pendiente.', 'error');
+    else avisar('Reserva aprobada.');
+    await cargarTodo(); render();
+  }
+
+  async function rechazar(id, motivo) {
+    if (!permitido('coordinador')) return;
+    const r = datos.reservas.find((x) => x.id === id);
+    if (!r || r.estado !== 'pendiente') return;
+    const texto = String(motivo || '').trim();
+    if (texto.length < 5) { avisar('Escribe el motivo del rechazo (mínimo 5 caracteres).', 'error'); render(); return; }
+    const res = await sb.from('reservas').update({ estado: 'rechazada', motivo_rechazo: texto })
+      .eq('id', id).eq('estado', 'pendiente').select('id');
+    if (sinCambios(res)) avisar('No se pudo rechazar: la solicitud ya no está pendiente.', 'error');
+    else avisar('Reserva rechazada.');
+    await cargarTodo(); render();
+  }
+
+  async function agregarRecurso(formData) {
+    if (!permitido('admin')) return;
+    const nombre = String(formData.get('nombre') || '').trim();
+    const tipo = String(formData.get('tipo') || 'aula');
+    const capacidad = parseInt(formData.get('capacidad'), 10);
+    estado.borradorRecurso = { nombre: nombre, tipo: tipo, capacidad: formData.get('capacidad') || '' };
+    const errores = [];
+    if (nombre.length < 3) errores.push('Escribe un nombre de al menos 3 caracteres.');
+    if (datos.recursos.some((r) => r.nombre.toLowerCase() === nombre.toLowerCase())) errores.push('Ya existe un recurso con ese nombre.');
+    if (!TIPOS[tipo]) errores.push('Elige un tipo de recurso.');
+    if (!(capacidad >= 1)) errores.push('La capacidad debe ser un número entero mayor que cero.');
+    if (errores.length) { estado.errores = errores; render(); return; }
+
+    const { error } = await sb.from('recursos').insert({ nombre: nombre, tipo: tipo, capacidad: capacidad });
+    if (error) {
+      estado.errores = [error.code === ERROR_DUPLICADO
+        ? 'Ya existe un recurso con ese nombre.'
+        : 'No se pudo agregar el recurso. Inténtalo de nuevo.'];
+      render();
+      return;
+    }
+    await cargarTodo();
+    estado.borradorRecurso = { nombre: '', tipo: 'aula', capacidad: '' };
+    estado.errores = [];
+    avisar('Recurso agregado.'); render();
+  }
+
+  async function alternarRecurso(id) {
+    if (!permitido('admin')) return;
+    const r = datos.recursos.find((x) => x.id === id);
+    if (!r) return;
+    const nuevo = !r.activo;
+    const res = await sb.from('recursos').update({ activo: nuevo }).eq('id', id).select('id');
+    if (sinCambios(res)) avisar('No se pudo cambiar el estado del recurso.', 'error');
+    else avisar(nuevo ? 'Recurso activado.' : 'Recurso desactivado. Las reservas existentes se conservan.');
+    await cargarTodo(); render();
+  }
+
+  /* ======================================================================
+     5. INTERFAZ: cada función devuelve texto HTML
+     ====================================================================== */
+
+  // Dibuja la línea de tiempo a partir de una lista de bloques ocupados.
+  // Si se pasa un borrador, muestra además el horario que la persona está eligiendo.
+  function htmlLineaDesde(ocupadas, borrador, cruceBorrador) {
+    const total = (HORA_CIERRE - HORA_APERTURA) * 60;
+    const pos = (min) => ((min - HORA_APERTURA * 60) / total) * 100; // minutos -> porcentaje del ancho
+
+    let marcas = '';
+    for (let h = HORA_APERTURA; h <= HORA_CIERRE; h += 2) {
+      const mover = h === HORA_APERTURA ? '0' : (h === HORA_CIERRE ? '-100%' : '-50%');
+      marcas += '<span style="left:' + pos(h * 60) + '%;transform:translateX(' + mover + ')">' + h + 'h</span>';
+    }
+
+    let bloques = ocupadas.map((r) =>
+      '<div class="bloque ' + r.estado + '" style="left:' + pos(aMin(r.inicio)) + '%;width:' + (pos(aMin(r.fin)) - pos(aMin(r.inicio))) + '%">' +
+      r.inicio + ' a ' + r.fin + '</div>'
+    ).join('');
+
+    if (borrador && borrador.inicio && borrador.fin && aMin(borrador.fin) > aMin(borrador.inicio)) {
+      bloques += '<div class="bloque borrador' + (cruceBorrador ? ' cruce' : '') + '" style="left:' + pos(aMin(borrador.inicio)) + '%;width:' +
+        (pos(aMin(borrador.fin)) - pos(aMin(borrador.inicio))) + '%">' + (cruceBorrador ? 'Cruce' : 'Tu horario') + '</div>';
+    }
+
+    const texto = ocupadas.length
+      ? 'Ocupado: ' + ocupadas.map((r) => r.inicio + ' a ' + r.fin + ' (' + ESTADOS[r.estado].toLowerCase() + ')').join(', ') + '.'
+      : 'Sin reservas ese día.';
+
+    return '<div class="linea">' +
+      '<div class="regla" aria-hidden="true">' + marcas + '</div>' +
+      '<div class="pista" role="img" aria-label="Horario del día de 6 a 22 horas">' + bloques + '</div>' +
+      '<ul class="leyenda"><li><i class="l-aprobada"></i>Aprobada</li><li><i class="l-pendiente"></i>Pendiente</li>' +
+      (borrador ? '<li><i class="l-borrador"></i>Tu horario</li>' : '') + '</ul>' +
+      '<p class="ocupado">' + texto + '</p></div>';
+  }
+
+  // Línea de tiempo de un recurso en un día, con los datos reales.
+  function htmlLinea(recursoId, fecha, borrador) {
+    const ocupadas = datos.reservas
+      .filter((r) => r.recursoId === recursoId && r.fecha === fecha && (r.estado === 'pendiente' || r.estado === 'aprobada'))
+      .sort(porFecha);
+    const hayBorrador = !!(borrador && borrador.inicio && borrador.fin && aMin(borrador.fin) > aMin(borrador.inicio));
+    const cruce = hayBorrador && !!hayCruce(recursoId, fecha, borrador.inicio, borrador.fin);
+    return htmlLineaDesde(ocupadas, borrador, cruce);
+  }
+
+  function htmlErrores() {
+    if (!estado.errores.length) return '';
+    return '<ul class="errores" role="alert">' + estado.errores.map((e) => '<li>' + esc(e) + '</li>').join('') + '</ul>';
+  }
+
+  function htmlLogin() {
+    // Ejemplo fijo para la pantalla de entrada (todavía no hay sesión para leer datos).
+    const ejemplo = [
+      { inicio: '08:00', fin: '10:00', estado: 'aprobada' },
+      { inicio: '14:00', fin: '16:00', estado: 'pendiente' }
+    ];
+    let aviso = '';
+    if (!configurado) {
+      aviso = '<p class="aviso error">Falta conectar Supabase. Abre el archivo y escribe tu URL y tu clave pública en SUPABASE_URL y SUPABASE_ANON_KEY, al inicio del script.</p>';
+    } else if (!sb) {
+      aviso = '<p class="aviso error">No se pudo cargar la librería de Supabase. Revisa tu conexión a internet y recarga la página.</p>';
+    }
+    return '<main class="login">' +
+      '<section class="login-intro">' +
+        '<p class="marca">Universidad NovaCaribe</p>' +
+        '<h1>Reserva aulas, laboratorios y equipos sin cruces de horario</h1>' +
+        '<p class="lead">Cada recurso muestra su día hora por hora. El sistema bloquea las franjas ocupadas y el coordinador aprueba cada solicitud.</p>' +
+        '<div class="muestra"><p class="muestra-titulo"><strong>Ejemplo de un día</strong><span>Un laboratorio</span></p>' +
+        htmlLineaDesde(ejemplo, null, false) + '</div>' +
+      '</section>' +
+      '<section aria-labelledby="t-entrar">' +
+        '<h2 id="t-entrar">Entrar</h2>' +
+        aviso +
+        '<form data-form="login" class="formulario" novalidate>' +
+          htmlErrores() +
+          '<label>Correo<input type="email" name="correo" autocomplete="username" value="' + esc(estado.correoLogin) + '"></label>' +
+          '<label>Contraseña<input type="password" name="clave" autocomplete="current-password"></label>' +
+          '<div><button class="btn" type="submit"' + (sb ? '' : ' disabled') + '>Entrar</button></div>' +
+        '</form>' +
+        '<p class="nota" style="margin-top:16px">Las cuentas las crea el administrador del sistema.</p>' +
+      '</section></main>';
+  }
+
+  function htmlCargando() {
+    return '<main class="login"><p class="lead">Cargando…</p></main>';
+  }
+
+  function htmlReservar() {
+    const b = estado.borrador;
+    const activos = datos.recursos.filter((r) => r.activo);
+    if (!activos.length) return '<p class="vacio">No hay recursos disponibles. El administrador debe activar al menos uno.</p>';
+    if (!activos.some((r) => r.id === b.recursoId)) b.recursoId = activos[0].id;
+
+    const grupos = Object.keys(TIPOS).map((t) => {
+      const items = activos.filter((r) => r.tipo === t);
+      if (!items.length) return '';
+      return '<optgroup label="' + TIPOS[t] + '">' + items.map((r) =>
+        '<option value="' + r.id + '"' + (r.id === b.recursoId ? ' selected' : '') + '>' + esc(r.nombre) + ', ' + textoCapacidad(r) + '</option>').join('') + '</optgroup>';
+    }).join('');
+    const opciones = (lista, sel) => lista.map((h) => '<option value="' + h + '"' + (h === sel ? ' selected' : '') + '>' + h + '</option>').join('');
+    const horasInicio = franjas(HORA_APERTURA * 60, HORA_CIERRE * 60 - 30);
+    const horasFin = franjas(HORA_APERTURA * 60 + 30, HORA_CIERRE * 60);
+
+    return '<form data-form="reserva" class="formulario" novalidate>' +
+      htmlErrores() +
+      '<div class="campos">' +
+        '<label>Recurso<select data-campo="recursoId">' + grupos + '</select></label>' +
+        '<label>Fecha<input type="date" data-campo="fecha" value="' + esc(b.fecha) + '" min="' + hoyISO() + '"></label>' +
+        '<label>Hora de inicio<select data-campo="inicio">' + opciones(horasInicio, b.inicio) + '</select></label>' +
+        '<label>Hora de fin<select data-campo="fin">' + opciones(horasFin, b.fin) + '</select></label>' +
+      '</div>' +
+      '<label>Motivo de la reserva<textarea data-campo="motivo" rows="3" maxlength="200" placeholder="Ejemplo: práctica de bases de datos con el grupo 3B">' + esc(b.motivo) + '</textarea></label>' +
+      '<section aria-labelledby="t-linea"><h2 id="t-linea">Disponibilidad del día</h2>' +
+        '<div id="linea">' + htmlLinea(b.recursoId, b.fecha, b) + '</div>' +
+        '<p id="pista" class="pista-texto" aria-live="polite">' + esc(textoDisponibilidad(b)) + '</p>' +
+      '</section>' +
+      '<div><button class="btn" type="submit">Enviar solicitud</button></div>' +
+    '</form>';
+  }
+
+  // Se llama cada vez que cambia un campo: redibuja solo la línea de tiempo,
+  // así el cursor no se sale del campo que la persona está escribiendo.
+  function actualizarLinea() {
+    const cont = $('#linea');
+    if (!cont) return;
+    const b = estado.borrador;
+    cont.innerHTML = htmlLinea(b.recursoId, b.fecha, b);
+    const pista = $('#pista');
+    if (pista) pista.textContent = textoDisponibilidad(b);
+  }
+
+  function htmlMisReservas() {
+    const mias = datos.reservas.filter((r) => r.usuarioId === estado.usuario.id).sort(porFecha).reverse();
+    if (!mias.length) return '<p class="vacio">Todavía no tienes reservas. Usa la sección Reservar para crear la primera.</p>';
+    return '<ul class="lista">' + mias.map((r) => {
+      const cancelable = (r.estado === 'pendiente' || r.estado === 'aprobada') && r.fecha >= hoyISO();
+      return '<li class="fila"><div>' +
+        '<p class="titulo">' + esc(nombreRecurso(r.recursoId)) + ' <span class="badge ' + r.estado + '">' + ESTADOS[r.estado] + '</span></p>' +
+        '<p class="detalle">' + fechaLegible(r.fecha) + ', de ' + r.inicio + ' a ' + r.fin + '</p>' +
+        '<p class="detalle">' + esc(r.motivo) + '</p>' +
+        (r.estado === 'rechazada' && r.motivoRechazo ? '<p class="detalle">Motivo del rechazo: ' + esc(r.motivoRechazo) + '</p>' : '') +
+        '</div><div class="acciones">' +
+        (cancelable ? '<button type="button" class="btn sec chico" data-accion="cancelar" data-id="' + r.id + '">Cancelar reserva</button>' : '') +
+        '</div></li>';
+    }).join('') + '</ul>';
+  }
+
+  function htmlSolicitudes() {
+    const pendientes = datos.reservas.filter((r) => r.estado === 'pendiente').sort(porFecha);
+    if (!pendientes.length) return '<p class="vacio">No hay solicitudes pendientes.</p>';
+    return '<ul class="lista">' + pendientes.map((r) =>
+      '<li class="fila"><div>' +
+        '<p class="titulo">' + esc(nombreRecurso(r.recursoId)) + '</p>' +
+        '<p class="detalle">' + fechaLegible(r.fecha) + ', de ' + r.inicio + ' a ' + r.fin + '</p>' +
+        '<p class="detalle">Solicita ' + esc(nombreUsuario(r.usuarioId)) + ': ' + esc(r.motivo) + '</p>' +
+      '</div><div class="acciones">' +
+        '<button type="button" class="btn chico" data-accion="aprobar" data-id="' + r.id + '">Aprobar</button>' +
+        '<form data-form="rechazo" data-id="' + r.id + '">' +
+          '<input name="motivo" placeholder="Motivo del rechazo" aria-label="Motivo del rechazo" maxlength="150">' +
+          '<button type="submit" class="btn peligro chico">Rechazar</button></form>' +
+      '</div></li>').join('') + '</ul>';
+  }
+
+  function htmlTodas() {
+    let lista = datos.reservas.slice().sort(porFecha).reverse();
+    if (estado.filtro !== 'todas') lista = lista.filter((r) => r.estado === estado.filtro);
+    const opciones = ['todas'].concat(Object.keys(ESTADOS)).map((e) =>
+      '<option value="' + e + '"' + (estado.filtro === e ? ' selected' : '') + '>' + (e === 'todas' ? 'Todos los estados' : ESTADOS[e]) + '</option>').join('');
+    const filas = lista.map((r) =>
+      '<tr><td>' + esc(nombreUsuario(r.usuarioId)) + '</td><td>' + esc(nombreRecurso(r.recursoId)) + '</td><td>' + fechaLegible(r.fecha) +
+      '</td><td>' + r.inicio + ' a ' + r.fin + '</td><td><span class="badge ' + r.estado + '">' + ESTADOS[r.estado] + '</span></td></tr>').join('');
+    return '<label class="filtro">Filtrar por estado<select id="filtro-estado">' + opciones + '</select></label>' +
+      (lista.length
+        ? '<div class="tabla-wrap"><table><thead><tr><th>Solicitante</th><th>Recurso</th><th>Fecha</th><th>Horario</th><th>Estado</th></tr></thead><tbody>' + filas + '</tbody></table></div>'
+        : '<p class="vacio">No hay reservas con ese estado.</p>');
+  }
+
+  function htmlReportes() {
+    const rs = datos.reservas;
+    const cuenta = (e) => rs.filter((r) => r.estado === e).length;
+    const aprobadas = cuenta('aprobada'), rechazadas = cuenta('rechazada');
+    const decididas = aprobadas + rechazadas;
+    const tasa = decididas ? Math.round((aprobadas / decididas) * 100) + ' %' : 'Sin datos';
+    const horas = datos.recursos.map((rec) => ({
+      nombre: rec.nombre,
+      h: rs.filter((r) => r.recursoId === rec.id && r.estado === 'aprobada').reduce((s, r) => s + (aMin(r.fin) - aMin(r.inicio)) / 60, 0)
+    })).sort((a, b) => b.h - a.h);
+    const max = Math.max(1, ...horas.map((x) => x.h));
+    const fmt = (h) => (Number.isInteger(h) ? h : h.toFixed(1)) + ' h';
+
+    return '<dl class="resumen">' +
+      '<div><dt>Solicitudes en total</dt><dd>' + rs.length + '</dd></div>' +
+      '<div><dt>Pendientes</dt><dd>' + cuenta('pendiente') + '</dd></div>' +
+      '<div><dt>Aprobadas</dt><dd>' + aprobadas + '</dd></div>' +
+      '<div><dt>Rechazadas</dt><dd>' + rechazadas + '</dd></div>' +
+      '<div><dt>Canceladas</dt><dd>' + cuenta('cancelada') + '</dd></div>' +
+      '<div><dt>Tasa de aprobación</dt><dd>' + tasa + '</dd></div></dl>' +
+      '<h2>Horas aprobadas por recurso</h2>' +
+      '<ul class="barras">' + horas.map((x) =>
+        '<li class="barra-fila"><span>' + esc(x.nombre) + '</span><span class="barra-pista"><span class="barra-valor" style="width:' + (x.h / max) * 100 + '%"></span></span>' +
+        '<span class="barra-num">' + fmt(x.h) + '</span></li>').join('') + '</ul>';
+  }
+
+  function htmlRecursos() {
+    const br = estado.borradorRecurso;
+    const tipos = Object.keys(TIPOS).map((t) =>
+      '<option value="' + t + '"' + (br.tipo === t ? ' selected' : '') + '>' + TIPOS[t].replace(/s$/, '') + '</option>').join('');
+    const lista = datos.recursos.map((r) =>
+      '<li class="fila"><div><p class="titulo">' + esc(r.nombre) + ' <span class="badge ' + (r.activo ? 'aprobada' : 'cancelada') + '">' + (r.activo ? 'Activo' : 'Inactivo') + '</span></p>' +
+      '<p class="detalle">' + TIPOS[r.tipo].replace(/s$/, '') + ', ' + textoCapacidad(r) + '</p></div>' +
+      '<div class="acciones"><button type="button" class="btn sec chico" data-accion="alternar" data-id="' + r.id + '">' + (r.activo ? 'Desactivar' : 'Activar') + '</button></div></li>').join('');
+    return '<form data-form="recurso" class="formulario" novalidate>' + htmlErrores() +
+      '<div class="campos">' +
+        '<label>Nombre<input name="nombre" value="' + esc(br.nombre) + '" maxlength="60"></label>' +
+        '<label>Tipo<select name="tipo">' + tipos + '</select></label>' +
+        '<label>Capacidad<input name="capacidad" type="number" min="1" step="1" value="' + esc(br.capacidad) + '"></label>' +
+      '</div><div><button class="btn" type="submit">Agregar recurso</button></div></form>' +
+      '<h2 style="margin-top:32px">Recursos registrados</h2><ul class="lista">' + lista + '</ul>';
+  }
+
+  function htmlVista() {
+    switch (estado.vista) {
+      case 'reservar': return htmlReservar();
+      case 'mis-reservas': return htmlMisReservas();
+      case 'solicitudes': return htmlSolicitudes();
+      case 'todas': return htmlTodas();
+      case 'reportes': return htmlReportes();
+      case 'recursos': return htmlRecursos();
+      default: return '';
+    }
+  }
+
+  function htmlShell() {
+    const u = estado.usuario;
+    const rol = ROLES[u.rol];
+    const pendientes = datos.reservas.filter((r) => r.estado === 'pendiente').length;
+    const nav = rol.vistas.map((v) =>
+      '<li><button type="button" class="nav-item' + (estado.vista === v ? ' activo' : '') + '" data-accion="ir" data-vista="' + v + '"' +
+      (estado.vista === v ? ' aria-current="page"' : '') + '>' + VISTAS[v].nav +
+      (v === 'solicitudes' && pendientes ? '<span class="contador">' + pendientes + '</span>' : '') + '</button></li>').join('');
+    const aviso = estado.aviso ? '<p class="aviso ' + estado.aviso.tipo + '">' + esc(estado.aviso.texto) + '</p>' : '';
+    return '<div class="app">' +
+      '<header class="barra"><div class="barra-marca"><span class="punto" aria-hidden="true"></span>NovaCaribe Reservas</div>' +
+      '<div class="barra-usuario"><div><span class="nombre">' + esc(u.nombre) + '</span><span class="rol">' + rol.nombre + '</span></div>' +
+      '<button type="button" class="btn sec chico" data-accion="salir">Salir</button></div></header>' +
+      '<nav class="lateral" aria-label="Secciones"><ul>' + nav + '</ul></nav>' +
+      '<main class="contenido"><h1>' + VISTAS[estado.vista].titulo + '</h1>' +
+      '<div id="aviso" role="status" aria-live="polite">' + aviso + '</div>' + htmlVista() + '</main></div>';
+  }
+
+  function render() {
+    $('#app').innerHTML = estado.iniciando ? htmlCargando() : (estado.usuario ? htmlShell() : htmlLogin());
+  }
+
+  /* ======================================================================
+     6. EVENTOS
+     Usamos "delegación de eventos": un solo oyente en #app atiende todos los
+     botones y formularios, aunque el HTML se vuelva a dibujar.
+     ====================================================================== */
+  const app = $('#app');
+
+  app.addEventListener('click', (e) => {
+    const el = e.target.closest('[data-accion]');
+    if (!el) return;
+    const id = el.dataset.id;
+    switch (el.dataset.accion) {
+      case 'salir': ejecutar(salir); break;
+      case 'ir': ejecutar(() => irA(el.dataset.vista)); break;
+      case 'aprobar': ejecutar(() => aprobar(id)); break;
+      case 'cancelar': ejecutar(() => cancelar(id)); break;
+      case 'alternar': ejecutar(() => alternarRecurso(id)); break;
+    }
+  });
+
+  app.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const f = e.target;
+    switch (f.dataset.form) {
+      case 'login': {
+        const fd = new FormData(f);
+        ejecutar(() => iniciarSesion(fd.get('correo'), fd.get('clave')));
+        break;
+      }
+      case 'reserva': ejecutar(enviarReserva); break;
+      case 'rechazo': {
+        const motivo = new FormData(f).get('motivo');
+        ejecutar(() => rechazar(f.dataset.id, motivo));
+        break;
+      }
+      case 'recurso': {
+        const fd = new FormData(f);
+        ejecutar(() => agregarRecurso(fd));
+        break;
+      }
+    }
+  });
+
+  // Cada campo del formulario de reserva tiene data-campo="nombre". Al cambiar,
+  // guardamos el valor en el borrador y actualizamos la línea de tiempo.
+  function alCambiar(e) {
+    if (e.target.id === 'filtro-estado') { estado.filtro = e.target.value; render(); return; }
+    const campo = e.target.dataset.campo;
+    if (!campo || !estado.borrador) return;
+    estado.borrador[campo] = e.target.value;
+    if (estado.vista === 'reservar') actualizarLinea();
+  }
+  app.addEventListener('input', alCambiar);
+  app.addEventListener('change', alCambiar);
+
+  /* ======================================================================
+     7. ARRANQUE
+     ====================================================================== */
+  if (sb) {
+    // Si la sesión caduca o se cierra en otra pestaña, volvemos a la pantalla de entrada.
+    sb.auth.onAuthStateChange((evento) => {
+      if (evento === 'SIGNED_OUT' && estado.usuario) { limpiarSesion(); render(); }
+    });
+    render();               // muestra "Cargando…"
+    ejecutar(iniciar);      // restaura la sesión si ya había una
+  } else {
+    render();               // muestra el aviso de configuración
+  }
+})();
+</script>
+</body>
+</html>
